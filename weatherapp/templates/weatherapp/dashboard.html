@@ -1,0 +1,191 @@
+{% extends 'weatherapp/layout/index.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+  body {
+    font-family: Arial;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  form.example input[type=text] {
+    padding: 10px;
+    font-size: 17px;
+    border: 1px solid grey;
+    float: left;
+    width: 80%;
+    background: #f1f1f1;
+  }
+
+  form.example button {
+    float: left;
+    width: 20%;
+    padding: 15px;
+    background: #2196F3;
+    color: white;
+    font-size: 17px;
+    border: 1px solid grey;
+    border-left: none;
+    cursor: pointer;
+  }
+
+  form.example button:hover {
+    background: #0b7dda;
+  }
+
+  form.example::after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+
+  .bredcomb {
+    background-color: blue;
+    color: white;
+    border-radius: 10px;
+    text-align: center;
+    /* padding: 5px 10px; */
+  }
+  .fav-button{
+    background-color: blue;
+    color:white;
+    border-radius: 10px;
+  }
+</style>
+
+<div class="container">
+<div class="mt-5">
+  <form id="weather-form" class="example" style="margin:auto;max-width:300px">
+    <input type="text" id="cityname" placeholder="Search.." name="cityname">
+    <button type="submit"><i class="fa fa-search"></i></button>
+  </form>
+
+</div>
+
+<div class="row mt-4">
+  <div class="col-2 ms-4">Favorite Cities</div>
+  {% for city in fav %}
+  <div class="col-1 p-1">
+    <div class="bredcomb" data-city="{{ city.cityname }}">{{ city.cityname }}</div>
+  </div>
+  {% endfor %}
+</div>
+<div class="d-flex justify-content-center">
+  <div>
+    <div class="mt-4">
+      <form action="{% url 'add_to_fav' %}" method="post">
+        {% csrf_token %}
+        <input type="text" id="hiddeninput" name="cityvalue" hidden value="">
+        <button class="fav-button" type="submit">Add to Favorite</button>
+      </form>
+    </div> 
+    <div class="card mt-2 " style="width: 26rem;">
+      <div class="card-header">
+        Weather Details
+      </div>
+      <ul id="weather-details" class="list-group list-group-flush">
+        <li class="list-group-item">City</li>
+        <li class="list-group-item">Humidity</li>
+        <li class="list-group-item">Temperature</li>
+        <li class="list-group-item">Weather Conditions</li>
+        <li class="list-group-item">Wind Speed</li>
+      </ul>
+
+    </div>
+  </div>
+    <div class="recent-searches mt-5 ms-5">
+      <h4>Recent Searches</h4>
+      <ul id="recent-searches-list"></ul>
+    </div>
+</div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    // Get recent searches from session storage
+    var recentCities = JSON.parse(sessionStorage.getItem('recentCities')) || [];
+    // Update the list with recent searches
+    var list = $('#recent-searches-list');
+    recentCities.forEach(function (city) {
+      list.append('<li>' + city + '</li>');
+    });
+
+    $('#weather-form').submit(function (event) {
+      // Prevent default form submission
+      event.preventDefault();
+      // Get the value of the input field
+      var cityName = $('#cityname').val();
+      // assign it to hidden value
+      $('#hiddeninput').val(cityName);
+      // Make the AJAX call
+      $.ajax({
+        url: '/checkweather',
+        type: 'GET',
+        data: {
+          cityname: cityName
+        },
+        success: function (response) {
+          // Update the weather details in the HTML
+          $('#weather-details li:nth-child(1)').text('City: ' + response.city);
+          $('#weather-details li:nth-child(2)').text('Humidity: ' + response.humidity);
+          $('#weather-details li:nth-child(3)').text('Temperature: ' + response.temperature);
+          $('#weather-details li:nth-child(4)').text('Weather Conditions: ' + response.weather_conditions);
+          $('#weather-details li:nth-child(5)').text('Wind Speed: ' + response.wind_speed);
+          // Handle the response, e.g., display the weather data
+          console.log(response);
+
+          // Store the city name in session
+          var recentCities = JSON.parse(sessionStorage.getItem('recentCities')) || [];
+          if (!recentCities.includes(cityName)) {
+            recentCities.push(cityName);
+            if (recentCities.length > 10) {
+              recentCities.shift(); // Remove the oldest city
+            }
+            sessionStorage.setItem('recentCities', JSON.stringify(recentCities));
+          }
+        },
+        error: function (xhr, status, error) {
+          // Handle errors
+          console.error(error);
+        }
+      });
+    });
+  });
+</script>
+
+
+<script>
+  $(document).ready(function() {
+    $('.bredcomb').click(function() {
+      var cityName = $(this).data('city');
+      $.ajax({
+        url: '/checkweather',
+        type: 'GET',
+        data: {
+          cityname: cityName
+        },
+        success: function(response) {
+          // Update the weather details in the HTML
+          $('#weather-details li:nth-child(1)').html(`<div class="d-flex justify-content-between"><div>City:</div><div>${response.city}</div></div>`);
+          $('#weather-details li:nth-child(2)').html(`<div class="d-flex justify-content-between"><div>Humidity:</div><div>${response.humidity}</div></div>`)
+          $('#weather-details li:nth-child(3)').html(`<div class="d-flex justify-content-between"><div>Temperature:</div><div>${response.temperature}</div></div>`)
+          $('#weather-details li:nth-child(4)').html(`<div class="d-flex justify-content-between"><div>Weather Conditions:</div><div>${response.weather_conditions}</div></div>`)
+          $('#weather-details li:nth-child(5)').html(`<div class="d-flex justify-content-between"><div>Wind Speed:</div><div>${response.wind_speed}</div></div>`)
+          // Handle the response, e.g., display the weather data
+          console.log(response);
+        },
+        error: function(xhr, status, error) {
+          // Handle errors
+          console.error(error);
+        }
+      });
+    });
+  });
+</script>
+
+{% endblock %}
